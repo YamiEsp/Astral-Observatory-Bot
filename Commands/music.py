@@ -1,9 +1,6 @@
-from ast import arg
-from asyncio import exceptions
 import discord
 from discord.ext import commands
 from youtube_dl import YoutubeDL
-import os
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -97,5 +94,6 @@ class Music(commands.Cog):
             await self.play_music()
     
 
-    def setup(bot):
-        bot.add_cog(Music(bot))
+    
+def setup(bot):
+    bot.add_cog(Music(bot))
