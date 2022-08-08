@@ -6,6 +6,7 @@ from sys import prefix
 from tokenize import Token
 import discord
 from discord.ext import commands
+from music import music
 
 from dotenv import load_dotenv
 
