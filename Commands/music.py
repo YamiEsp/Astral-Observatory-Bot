@@ -41,17 +41,16 @@ class Music(commands.Cog):
 
             m_url = self.music_queue[0][0]['source']
 
-            if self.vc == "" or not self.vc.is_connected():
+            if self.vc == "" or not self.vc.is_connected() or self.vc == None:
                 self.vc = await self.music_queue[0][1].connect()
             else:
-                self.vc = await self.bot.move_to(self.music_queue[0][1])
+                await self.vc.move_to(self.music_queue[0][1])
 
             print(self.music_queue)
 
             self.music_queue.pop(0)
 
             self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after = lambda e: self.play_next())
-        
         else:
             self.is_playing = False
 
