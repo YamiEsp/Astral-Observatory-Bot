@@ -73,6 +73,7 @@ class Music(commands.Cog):
 
                 if self.is_playing == False:
                     await self.play_music()
+                    await ctx.send("Now playing" + self.music_queue[0][0]['title'])
 
     @commands.command(name="queue", help="Display the current queue")
     async def queue(self, ctx):
