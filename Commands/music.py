@@ -55,7 +55,7 @@ class Music(commands.Cog):
             self.is_playing = False
 
 
-    @commands.command()
+    @commands.command(name ="play", help = "Plays a song from YT")
     async def play(self, ctx, *args):
         query = " ".join(args)
 
@@ -74,7 +74,7 @@ class Music(commands.Cog):
                 if self.is_playing == False:
                     await self.play_music()
 
-    @commands.command()
+    @commands.command(name="queue", help="Display the current queue")
     async def queue(self, ctx):
         retrval = ""
         for i in range(0, len(self.music_queue)):
@@ -86,11 +86,17 @@ class Music(commands.Cog):
         else:
             await ctx.send('No music in queue')
 
-    @commands.command()
+    @commands.command(name="skip", help="Skips the current song")
     async def skip(self, ctx):
-        if self.vc != "":
+        if self.vc != "" and self.vc:
             self.vc.stop()
+            await ctx.send("Song skiped")
             await self.play_music()
+    
+    @commands.command(name="disconnect", help="disconnecting bot from VC")
+    async def dc(self, ctx):
+        await ctx.send("Disconnected from VC")
+        await self.vc.disconnect()
     
 
     
