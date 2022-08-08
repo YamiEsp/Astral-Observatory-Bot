@@ -72,23 +72,43 @@ async def prefix(ctx, prefix):
 #load a new cog
 @client.command(brief='"cog name": to load a new cog', describe='Load a new cog', aliases=['Load'])
 async def load(ctx, extension):
-    client.load_extension(f'Commands.{extension}')
-    print (f'{extension} has been loaded')
-    await ctx.send(f'Loaded {extension}')
+    if ctx.author.id == 183405695066963968 or ctx.author.id == 364077052795682816:
+        client.load_extension(f'Commands.{extension}')
+        print (f'{extension} has been loaded')
+        await ctx.send(f'Loaded {extension}')
+    else:
+        await ctx.send('You do not have authorization')
 
 #unload a cog 
 @client.command(brief='"cog name": to unload a cog', describe='Unload a cog', aliases=['Unload'])
 async def unload(ctx, extension):
-    client.unload_extension(f'Commands.{extension}')
-    print (f'{extension} has been unloaded')
-    await ctx.send(f'Unloaded {extension}')
+    if ctx.author.id == 183405695066963968 or ctx.author.id == 364077052795682816:
+        client.unload_extension(f'Commands.{extension}')
+        print (f'{extension} has been unloaded')
+        await ctx.send(f'Unloaded {extension}')
+    else:
+        await ctx.send('You do not have authorization')
+
 
 #Reload a cog
 @client.command(brief='"cog name": to reload a cog', describe='Reload a cog', aliases=['Reload'])
 async def reload(ctx, extension):
-    client.reload_extension(f'Commands.{extension}')
-    print (f'{extension} has been reloaded')
-    await ctx.send(f'Reloaded {extension}')
+    if ctx.author.id == 183405695066963968 or ctx.author.id == 364077052795682816:
+        client.reload_extension(f'Commands.{extension}')
+        print (f'{extension} has been reloaded')
+        await ctx.send(f'Reloaded {extension}')
+    else:
+        await ctx.send('You do not have authorization')
+
+#List cogs
+@client.command(brief='"list of all cogs', describe='list of cogs', aliases=['List cogs', 'List Cogs', 'list cogs', 'list Cogs'])
+async def list(ctx):
+    if ctx.author.id == 183405695066963968 or ctx.author.id == 364077052795682816:
+        for filename in os.listdir('./Commands'):
+            if filename.endswith('.py'):
+                print(f'{filename[:-3]} is present and voting')
+    else:
+        await ctx.send('You do not have authorization')
 
 #search and load all cogs
 for filename in os.listdir('./Commands'):
