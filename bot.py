@@ -18,7 +18,7 @@ def get_prefix(bot, message):
         prefixes = json.load(f)
     return prefixes[str(message.guild.id)]
 
-client = commands.Bot(command_prefix= get_prefix)
+client = commands.Bot(command_prefix= get_prefix, intents=discord.Intents.default() )
  
 @client.event
 async def on_command_error(ctx, error):

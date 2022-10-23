@@ -8,12 +8,14 @@ class Music(commands.Cog):
 
         self.is_playing = False
 
+        #array with the songs
         self.music_queue = []
         self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True'}
         self.FFMPEG_OPTIONS ={'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
         self.vc = ""
 
+    #searches for the song
     def search_yt(self, item):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
             try:
@@ -27,27 +29,32 @@ class Music(commands.Cog):
         if len(self.music_queue) > 0:
             self.is_playing = True
 
+            #get the first song in the queue
             m_url = self.music_queue[0][0]['source']
 
+            #Remove the first song in the queue after it has been played
             self.music_queue.pop(0)
 
             self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
         else:
             self.is_playing = False
     
+    #infinite loop
     async def play_music(self):
         if len(self.music_queue) > 0:
             self.is_playing = True
 
             m_url = self.music_queue[0][0]['source']
 
+            #try connection to VC
             if self.vc == "" or not self.vc.is_connected() or self.vc == None:
                 self.vc = await self.music_queue[0][1].connect()
             else:
                 await self.vc.move_to(self.music_queue[0][1])
 
             print(self.music_queue)
-
+            
+            #Remove first element
             self.music_queue.pop(0)
 
             self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after = lambda e: self.play_next())
