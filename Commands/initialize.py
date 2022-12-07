@@ -17,5 +17,5 @@ class Initialize(commands.Cog):
 
             await ctx.send('Hello, ' + ctx.author.name + '!')
     
-def setup(bot):
-    bot.add_cog(Initialize(bot))
+async def setup(bot):
+    await bot.add_cog(Initialize(bot))

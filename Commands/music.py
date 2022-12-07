@@ -1,113 +1,146 @@
 import discord
+import typing
 from discord.ext import commands
-from youtube_dl import YoutubeDL
+import wavelink
 
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        bot.loop.create_task(self.create_nodes())
 
-        self.is_playing = False
+    async def create_nodes(self):
+        await self.bot.wait_until_ready()
+        await wavelink.NodePool.create_node(bot=self.bot, host="127.0.0.1", port="41727", password="testing")
 
-        #array with the songs
-        self.music_queue = []
-        self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist':'True'}
-        self.FFMPEG_OPTIONS ={'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+    @commands.Cog.listener()
+    async def on_wavelink_node_ready(self, node: wavelink.Node):
+        print(f"Node <{node.identifier}> is now Ready!")
 
-        self.vc = ""
-
-    #searches for the song
-    def search_yt(self, item):
-        with YoutubeDL(self.YDL_OPTIONS) as ydl:
-            try:
-                info = ydl.extract_info("ytsearch:%s" % item, download = False)['entries'][0]
-            except Exception:
-                return False
-         
-        return {'source': info['formats'][0]['url'], 'title': info['title']}
-    
-    def play_next(self):
-        if len(self.music_queue) > 0:
-            self.is_playing = True
-
-            #get the first song in the queue
-            m_url = self.music_queue[0][0]['source']
-
-            #Remove the first song in the queue after it has been played
-            self.music_queue.pop(0)
-
-            self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
-        else:
-            self.is_playing = False
-    
-    #infinite loop
-    async def play_music(self):
-        if len(self.music_queue) > 0:
-            self.is_playing = True
-
-            m_url = self.music_queue[0][0]['source']
-
-            #try connection to VC
-            if self.vc == "" or not self.vc.is_connected() or self.vc == None:
-                self.vc = await self.music_queue[0][1].connect()
-            else:
-                await self.vc.move_to(self.music_queue[0][1])
-
-            print(self.music_queue)
-            
-            #Remove first element
-            self.music_queue.pop(0)
-
-            self.vc.play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS), after = lambda e: self.play_next())
-        else:
-            self.is_playing = False
-
-
-    @commands.command(name ="play", help = "Plays a song from YT")
-    async def play(self, ctx, *args):
-        query = " ".join(args)
-
-        voice_channel = ctx.author.voice.channel
-        if voice_channel is None:
-
-            await ctx.send("Connect to a voice channel")
-        else:
-            song = self.search_yt(query)
-            if type(song) == type(True):
-                await ctx.send("Could not donwload the song")
-            else:
-                await ctx.send("Song added to the queue")
-                self.music_queue.append([song, voice_channel])
-
-                if self.is_playing == False:
-                    await self.play_music()
-                    #await ctx.send("Now playing" + self.music_queue[0][0]['title'])
-
-    @commands.command(name="queue", help="Display the current queue")
-    async def queue(self, ctx):
-        retval = ""
-        await ctx.send('The queue is:')
-        for i in range(0, len(self.music_queue)):
-            retval += self.music_queue[i][0]['title'] + "\n"
+    @commands.command(name="join", aliases=["connect", "summon"])
+    async def join_command(self, ctx: commands.Context, channel: typing.Optional[discord.VoiceChannel]):
+        if channel is None:
+            channel = ctx.author.voice.channel
         
-        print(retval)
-        if retval != "":
-            await ctx.send(retval)
+        node = wavelink.NodePool.get_node()
+        player = node.get_player(ctx.guild)
+
+        if player is not None:
+            if player.is_connected():
+                return await ctx.send("bot is already connected to a voice channel")
+        
+        await channel.connect(cls=wavelink.Player)
+        mbed=discord.Embed(title=f"Connected to {channel.name}", color=discord.Color.from_rgb(255, 255, 255))
+        await ctx.send(embed=mbed)
+
+    @commands.command(name ="play", help = "Plays a song from YT", aliases=["p", "Play", "P"])
+    async def play_command(self, ctx: commands.Context, *, search: str):
+        search = await wavelink.YouTubeTrack.search(query=search, return_first=True)
+
+        if not ctx.voice_client:
+            vc: wavelink.Player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
         else:
-            await ctx.send('No music in queue')
+            vc: wavelink.Player = ctx.voice_client
+        
+        await vc.play(search)
 
-    @commands.command(name="skip", help="Skips the current song")
-    async def skip(self, ctx):
-        if self.vc != "" and self.vc:
-            self.vc.stop()
-            await ctx.send("Song skiped")
-            await self.play_music()
-    
-    @commands.command(name="disconnect", help="disconnecting bot from VC")
-    async def dc(self, ctx):
-        await ctx.send("Disconnected from VC")
-        await self.vc.disconnect()
-    
+        mbed = discord.Embed(title=f"Now Playing {search}", color=discord.Color.from_rgb(255, 255, 255))
+        await ctx.send(embed=mbed)
+        # if channel is None:
+        #     channel = ctx.author.voice.channel
+        
+        # node = wavelink.NodePool.get_node()
+        # player = node.get_player(ctx.guild)
+        
+        # await channel.connect(cls=wavelink.Player)
+        # mbed=discord.Embed(title=f"Connected to {channel.name}", color=discord.Color.from_rgb(255, 255, 255))
 
+        # search = await wavelink.YouTubeTrack.search(query=search, return_first=True)
+
+        # if not ctx.voice.client:
+        #     vc: wavelink.Player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+        # else:
+        #     vc: wavelink.Pleyer = ctx.voice_client
+
+        # await vc.play(search)
+
+        # mbed = discord.Embed(title=f"Now Playing {search}", color = discord.Color.from_rgb(255, 255, 255))
+        # await ctx.send(embed=mbed)
+
+    @commands.command(name="stop")
+    async def stop_command(self, ctx):
+        node = wavelink.NodePool.get_node()
+        player = node.get_player(ctx.guild)
+
+        if player is None:
+            return await ctx.send("Bot is not connected to any voice channel")
+        
+        if player.is_playing:
+            await player.stop()
+            mbed = discord.Embed(title="Playback Stoped", color=discord.Color.from_rgb(255, 255, 255))
+            return await ctx.send(embed=mbed)
+        else:
+            return await ctx.send("Nothing Is playing right now")
     
-def setup(bot):
-    bot.add_cog(Music(bot))
+    @commands.command(name="pause")
+    async def pause_command(self, ctx: commands.Context):
+        node = wavelink.NodePool.get_node()
+        player = node.get_player(ctx.guild)
+
+        if player is None:
+            return await ctx.send("Bot is not connected to any voice channel")
+        
+        if not player.is_paused():
+            if player.is_playing():
+                await player.pause()
+                mbed = discord.Embed(title="Playback Paused", color=discord.Color.from_rgb(255, 255, 255))
+                return await ctx.send(embed=mbed)
+            else:
+                return await ctx.send("Nothing is playing right now")
+        else:
+            return await ctx.send("Playback is Already paused")
+    
+    @commands.command(name="resume")
+    async def resume_command(self, ctx: commands.Context):
+        node = wavelink.NodePool.get_node()
+        player = node.get_player(ctx.guild)
+
+        if player is None:
+            return await ctx.send("bot is not connnected to any voice channel")
+        
+        if player.is_paused():
+            await player.resume()
+            mbed = discord.Embed(title="Playback resumed", color=discord.Color.from_rgb(255, 255, 255))
+            return await ctx.send(embed=mbed)
+        else:
+            return await ctx.send("playback is not paused")
+
+    @commands.command(name="volume")
+    async def volume_command(self, ctx: commands.Context, to: int):
+        if to > 100:
+            return await ctx.send("Volume should be between 0 and 100")
+        elif to < 1:
+            return await ctx.send("Volume should be between 0 and 100")
+        
+
+        node = wavelink.NodePool.get_node()
+        player = node.get_player(ctx.guild)
+
+        await player.set_volume(to)
+        mbed = discord.Embed(title=f"Changed Volume to {to}", color=discord.Color.from_rgb(255, 255, 255))
+        await ctx.send(embed=mbed)
+    
+    @commands.command(name="leave", help= "Disconnects the bot from the voice channel", aliases=["disconnect"])
+    async def leave_command(self, ctx: commands.Context):
+        node = wavelink.NodePool.get_node()
+        player = node.get_player(ctx.guild)
+
+        if player is None:
+            return await ctx.send("Bot is not connected to any voice channel")
+        
+        await player.disconnect()
+        mbed = discord.Embed(title="disconnected", color=discord.Color.from_rgb(255, 255, 255))
+        await ctx.send(embed=mbed)
+        
+    
+async def setup(bot):
+    await bot.add_cog(Music(bot))

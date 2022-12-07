@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from ast import alias
 import os
 from pydoc import describe
@@ -6,10 +7,6 @@ from sys import prefix
 from tokenize import Token
 import discord
 from discord.ext import commands
-
-
-
-
 
 from dotenv import load_dotenv
 
@@ -21,11 +18,13 @@ def get_prefix(bot, message):
     with open('prefixes.json', 'r') as f:
         prefixes = json.load(f)
     return prefixes[str(message.guild.id)]
-
-client = commands.Bot(command_prefix= get_prefix)
+intents = discord.Intents.all()
+intents.message_content = True
+client = commands.Bot(command_prefix= get_prefix, intents = intents)
 
 @client.event
 async def on_command_error(ctx, error):
+        print(error)
         if isinstance(error, commands.CommandNotFound):
             await ctx.send('Command not found')
         elif isinstance(error, commands.MissingRequiredArgument):
@@ -46,6 +45,11 @@ async def on_command_error(ctx, error):
 @client.event
 async def on_ready():
     print(f'{client.user} has connected to Discord!')
+    #search and load all cogs
+    for filename in os.listdir('./Commands'):
+        if filename.endswith('.py'):
+            await client.load_extension(f'Commands.{filename[:-3]}')
+            print (f'{filename[:-3]} has been loaded')
 
 #Prefix Setter and reader (for the bot)
 @client.event
@@ -110,15 +114,10 @@ async def list(ctx):
     if ctx.author.id == 183405695066963968 or ctx.author.id == 364077052795682816:
         for filename in os.listdir('./Commands'):
             if filename.endswith('.py'):
+                await ctx.send(f'{filename[:-3]} is present and voting')
                 print(f'{filename[:-3]} is present and voting')
     else:
         await ctx.send('You do not have authorization')
-
-#search and load all cogs
-for filename in os.listdir('./Commands'):
-    if filename.endswith('.py'):
-        client.load_extension(f'Commands.{filename[:-3]}')
-        print (f'{filename[:-3]} has been loaded')
     
 
 client.run(Token)
