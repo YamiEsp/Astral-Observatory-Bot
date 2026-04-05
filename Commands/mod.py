@@ -12,8 +12,6 @@ class Mod(commands.Cog):
         async for message in ctx.channel.history(limit=amount + 1):
             await message.delete()
         await ctx.send(f'Cleared {amount} messages', delete_after=3)
-
-
     
 async def setup(bot):
     await bot.add_cog(Mod(bot))

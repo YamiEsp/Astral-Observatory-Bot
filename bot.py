@@ -4,13 +4,30 @@ import os
 from pydoc import describe
 import json
 from sys import prefix
+
 from tokenize import Token
+
 import discord
 from discord.ext import commands
 
 from dotenv import load_dotenv
 
+import logging
 
+#Logs configs
+
+logging.basicConfig(
+        level=logging.INFO,
+        format='[%(asctime)s] [%(levelname)s] %(name)s: %(message)s',
+        handlers=[
+            logging.FileHandler(filename='bot.log', encoding='utf-8', mode='a'),
+            logging.StreamHandler()
+        ]
+)
+
+logger = logging.getLogger('discord_bot')
+
+#load Enviroment variables
 load_dotenv()
 Token = os.getenv('TOKEN')
 
@@ -44,14 +61,24 @@ async def on_command_error(ctx, error):
 
 @client.event
 async def on_ready():
-    print(f'{client.user} has connected to Discord!')
+    logger.info(f'{client.user} has connected to Discord!')
+    logger.info('Buscando prefixes.json')
+    try:
+        with open("prefixes.json", "r") as f:
+            content = f.read()
+        logger.info('prefixes.json encontrado')
+    except FileNotFoundError:
+        logger.warning('prefixes.json no encontrado, creando...')
+        with open("prefixes.json", "w") as f:
+            f.write("")
+        logger.info('prefixes.json creado.')
     #search and load all cogs
     for filename in os.listdir('./Commands'):
         if filename.endswith('.py'):
             await client.load_extension(f'Commands.{filename[:-3]}')
-            print (f'{filename[:-3]} has been loaded')
+            logger.info(f'{filename[:-3]} has been loaded')
 
-#Prefix Setter and reader (for the bot)
+#Prefix Setter and getters (for the bot)
 @client.event
 async def on_guild_join(guild):
     with open('prefixes.json', 'r') as f:
@@ -81,8 +108,8 @@ async def prefix(ctx, prefix):
 @client.command(brief='"cog name": to load a new cog', describe='Load a new cog', aliases=['Load'])
 async def load(ctx, extension):
     if ctx.author.id == 183405695066963968 or ctx.author.id == 594316522089086986:
-        client.load_extension(f'Commands.{extension}')
-        print (f'{extension} has been loaded')
+        await client.load_extension(f'Commands.{extension}')
+        logger.info(f'{extension} has been loaded')
         await ctx.send(f'Loaded {extension}')
     else:
         await ctx.send('You do not have authorization')
@@ -91,8 +118,8 @@ async def load(ctx, extension):
 @client.command(brief='"cog name": to unload a cog', describe='Unload a cog', aliases=['Unload'])
 async def unload(ctx, extension):
     if ctx.author.id == 183405695066963968 or ctx.author.id == 594316522089086986:
-        client.unload_extension(f'Commands.{extension}')
-        print (f'{extension} has been unloaded')
+        await client.unload_extension(f'Commands.{extension}')
+        logger.info(f'{extension} has been unloaded')
         await ctx.send(f'Unloaded {extension}')
     else:
         await ctx.send('You do not have authorization')
@@ -102,8 +129,8 @@ async def unload(ctx, extension):
 @client.command(brief='"cog name": to reload a cog', describe='Reload a cog', aliases=['Reload'])
 async def reload(ctx, extension):
     if ctx.author.id == 183405695066963968 or ctx.author.id == 594316522089086986:
-        client.reload_extension(f'Commands.{extension}')
-        print (f'{extension} has been reloaded')
+        await client.reload_extension(f'Commands.{extension}')
+        logger.info(f'{extension} has been reloaded')
         await ctx.send(f'Reloaded {extension}')
     else:
         await ctx.send('You do not have authorization')
@@ -115,7 +142,7 @@ async def list(ctx):
         for filename in os.listdir('./Commands'):
             if filename.endswith('.py'):
                 await ctx.send(f'{filename[:-3]} is present and voting')
-                print(f'{filename[:-3]} is present and voting')
+                logger.info(f'{filename[:-3]} is present and voting')
     else:
         await ctx.send('You do not have authorization')
     

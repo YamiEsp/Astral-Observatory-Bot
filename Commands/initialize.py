@@ -11,7 +11,7 @@ class Initialize(commands.Cog):
 
     @commands.command(brief='A comfy hello', description='A command that returns a hello with the name of the user')
     async def hello(self, ctx):
-        if ctx.author.id == 183405695066963968 or ctx.author.id == ctx.guild.owner_id:
+        if ctx.author.id == 183405695066963968 or ctx.author.id == 594316522089086986 or ctx.author.id == ctx.guild.owner_id:
             await ctx.send("Hello, master!")
         else: 
 
