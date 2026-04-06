@@ -4,7 +4,6 @@ import os
 from pydoc import describe
 import json
 from sys import prefix
-
 from tokenize import Token
 
 import discord
@@ -30,7 +29,10 @@ logger = logging.getLogger('discord_bot')
 #load Enviroment variables
 load_dotenv()
 Token = os.getenv('TOKEN')
+IdASC = os.getenv('ASC_USER_ID')
+IdAPS = os.getenv('APS_USER_ID')
 
+#Gets prefix for the server
 def get_prefix(bot, message):
     with open('prefixes.json', 'r') as f:
         prefixes = json.load(f)
@@ -39,26 +41,36 @@ intents = discord.Intents.all()
 intents.message_content = True
 client = commands.Bot(command_prefix= get_prefix, intents = intents)
 
+#Error Handler
 @client.event
 async def on_command_error(ctx, error):
-        print(error)
-        if isinstance(error, commands.CommandNotFound):
-            await ctx.send('Command not found')
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send('Missing required argument')
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send('Missing permissions')
-        elif isinstance(error, commands.BotMissingPermissions):
-            await ctx.send('Bot missing permissions')
-        elif isinstance(error, commands.CheckFailure):
-            await ctx.send('Check failure')
-        elif isinstance(error, commands.CommandOnCooldown):
-            await ctx.send('Command on cooldown')
-        elif isinstance(error, commands.CommandInvokeError):
-            await ctx.send('Command invoke error')
-        elif isinstance(error, commands.CommandError):
-            await ctx.send('Command error')
+        logger.error(error)
+        match error:
+            case commands.CommandNotFound:
+                await ctx.send('Command not found')
+            case commands.MissingPermissions:
+                await ctx.send('You do not have permission to use that command')
+            case commands.BotMissingPermissions:
+                await ctx.send('Bot does not have permission to use this command')
+            case commands.MissingRequiredArgument:
+                await ctx.send('Missing arguments')
+            case commands.CheckFailure:
+                await ctx.send('Check Failure')
+            case commands.BadArgument:
+                await ctx.send('Invalid arguments')
+            case commands.CommandOnCooldown:
+                await ctx.send('Command on cooldown')
+            case commands.CommandInvokeError:
+                await ctx.send('Command InvokeError')
+            case commands.NoPrivateMessage:
+                await ctx.send('This command cannot be used in private messages')
+            case commands.NotOwner:
+                await ctx.send('You do not have permission to use this command')
+            case commands.CommandError:
+                await ctx.send('Command Error')
 
+
+#On startup, this is the first code to run
 @client.event
 async def on_ready():
     logger.info(f'{client.user} has connected to Discord!')
@@ -86,7 +98,8 @@ async def on_guild_join(guild):
     prefixes[str(guild.id)] = '*'
     with open('prefixes.json', 'w') as f:
         json.dump(prefixes, f, indent=4)
-    
+
+#Deletion of the Prefix on server leave
 @client.event
 async def on_guild_remove(guild):
     with open('prefixes.json', 'r') as f:
@@ -94,7 +107,8 @@ async def on_guild_remove(guild):
     prefixes.pop(str(guild.id))
     with open('prefixes.json', 'w') as f:
         json.dump(prefixes, f, indent=4)
-    
+
+#Change of prefix for the server
 @client.command()
 async def prefix(ctx, prefix):
     with open('prefixes.json', 'r') as f:
@@ -104,47 +118,46 @@ async def prefix(ctx, prefix):
         json.dump(prefixes, f, indent=4)
     await ctx.send(f'Prefix set to {prefix}')
 
+#Verification of ownership and auth
+def is_owner(ctx):
+    return ctx.author.id in [IdASC, IdAPS]
+
 #load a new cog
 @client.command(brief='"cog name": to load a new cog', describe='Load a new cog', aliases=['Load'])
+@commands.check(is_owner)
 async def load(ctx, extension):
-    if ctx.author.id == 183405695066963968 or ctx.author.id == 594316522089086986:
-        await client.load_extension(f'Commands.{extension}')
-        logger.info(f'{extension} has been loaded')
-        await ctx.send(f'Loaded {extension}')
-    else:
-        await ctx.send('You do not have authorization')
+    await client.load_extension(f'Commands.{extension}')
+    logger.info(f'{extension} has been loaded')
+    await ctx.send(f'Loaded {extension}')
 
 #unload a cog 
 @client.command(brief='"cog name": to unload a cog', describe='Unload a cog', aliases=['Unload'])
+@commands.check(is_owner)
 async def unload(ctx, extension):
-    if ctx.author.id == 183405695066963968 or ctx.author.id == 594316522089086986:
-        await client.unload_extension(f'Commands.{extension}')
-        logger.info(f'{extension} has been unloaded')
-        await ctx.send(f'Unloaded {extension}')
-    else:
-        await ctx.send('You do not have authorization')
+    await client.unload_extension(f'Commands.{extension}')
+    logger.info(f'{extension} has been unloaded')
+    await ctx.send(f'Unloaded {extension}')
 
 
 #Reload a cog
 @client.command(brief='"cog name": to reload a cog', describe='Reload a cog', aliases=['Reload'])
+@commands.check(is_owner)
 async def reload(ctx, extension):
-    if ctx.author.id == 183405695066963968 or ctx.author.id == 594316522089086986:
-        await client.reload_extension(f'Commands.{extension}')
-        logger.info(f'{extension} has been reloaded')
-        await ctx.send(f'Reloaded {extension}')
-    else:
-        await ctx.send('You do not have authorization')
+    await client.reload_extension(f'Commands.{extension}')
+    logger.info(f'{extension} has been reloaded')
+    await ctx.send(f'Reloaded {extension}')
+
 
 #List cogs
-@client.command(brief='"list of all cogs', describe='list of cogs', aliases=['List cogs', 'List Cogs', 'list cogs', 'list Cogs'])
-async def list(ctx):
-    if ctx.author.id == 183405695066963968 or ctx.author.id == 594316522089086986:
-        for filename in os.listdir('./Commands'):
-            if filename.endswith('.py'):
-                await ctx.send(f'{filename[:-3]} is present and voting')
-                logger.info(f'{filename[:-3]} is present and voting')
-    else:
-        await ctx.send('You do not have authorization')
-    
+@client.command(brief='"list of all cogs', describe='list of cogs', aliases=['Lc', 'lc', 'LC', 'lC', 'cogs '])
+@commands.check(is_owner)
+async def list_cogs(ctx):
+    loaded = list(client.extensions.keys())
+    for filename in os.listdir('./Commands'):
+        if filename.endswith('.py'):
+            name = f'Commands.{filename[:-3]}'
+            status = "🟢 Loaded" if name in loaded else "🔴 Not loaded"
+            await ctx.send(f'{filename[:-3]} is present and (voting) {status}')
+            logger.info(f'{filename[:-3]} is present and (voting) {status}')
 
 client.run(Token)
